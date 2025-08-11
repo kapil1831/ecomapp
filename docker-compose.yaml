@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  app:
+    image: kapil1831/ecomapp:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecomapp
+    network_mode: host
+    working_dir: /app
+    volumes:
+      - ./:/app/
+    ports:
+      - "8005:8005"
+  
+
+volumes:
+  app_data:
+    driver: local
+  redis_data:
+    driver: local
+  cups_data:
+    driver: local
+  db_data:
+    driver: local
