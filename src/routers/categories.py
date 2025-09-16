@@ -7,7 +7,7 @@ from src.schemas.category import CategoryCreate, CategoryOut, CategoriesOut, Cat
 from src.schemas.product import CategoryOutWithProducts
 from src.dependencies.dependencies import SessionDep
 from sqlalchemy.orm import Session
-from src.models.models import User
+from src.models.users import User
 from typing import Annotated
 
 router = APIRouter(tags=["Category"], prefix="/category")

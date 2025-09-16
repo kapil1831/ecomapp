@@ -3,7 +3,7 @@ from sqlalchemy import select
 from .user import UserService
 from ..schemas.user import UserRegister, UserRegisterResponse, UserLogin, UserLoginResponse, UserCredentials
 from ..schemas.tokens import Token, TokenData
-from ..models.models import User
+from ..models.users import User
 from datetime import datetime, timedelta, timezone
 from fastapi.security import HTTPAuthorizationCredentials, OAuth2PasswordBearer, HTTPBearer, OAuth2PasswordRequestForm, SecurityScopes
 from fastapi import Depends, HTTPException, Security, status
@@ -159,11 +159,29 @@ class AuthService:
                     )        
         return user
     
-    # @staticmethod
-    # def require_role(user: User, role: str):
-    #     if user.role != role:
-    #         raise Exception(f"User does not have the required role: {role}")
-    #     return True
+    @staticmethod
+    def role_required(role: str):
+        def role_checker(user : Annotated[User, Security(AuthService.get_current_user, scopes=["me"])]):
+            if role not in user.roles:
+                raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="User does not have required role",
+                    )
+            return user
+        return role_checker
+    
+    @staticmethod
+    def permission_required(permission: str):
+        def permission_checker(user : Annotated[User, Security(AuthService.get_current_user, scopes=["me"])]):
+            for role in user.roles:
+                if permission in role.permissions:
+                    return user
+                
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User does not have required permission",
+            )
+        return permission_checker
     
     @staticmethod
     def validate_scopes(accessible_scopes, payload_scopes):

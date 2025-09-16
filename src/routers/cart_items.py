@@ -3,7 +3,7 @@ from src.schemas.cart_item import CartItemUpdateOut, CartItemsOut, CartItemCreat
 from src.services.cart_item import CartItemService
 from ..dependencies.dependencies import SessionDep
 from src.services.auth import AuthService
-from src.models.models import User
+from ..models.users import User
 from fastapi import Depends
 from typing import Annotated
 

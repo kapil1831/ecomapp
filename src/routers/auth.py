@@ -6,7 +6,7 @@ from src.schemas.tokens import Token
 from src.services.auth import AuthService
 from ..dependencies.dependencies import SessionDep
 from fastapi import Depends
-from src.models.models import User
+from ..models.users import User
 from typing import Annotated
 
 router = APIRouter(tags=["Authentication"], prefix="/auth")
@@ -14,7 +14,7 @@ router = APIRouter(tags=["Authentication"], prefix="/auth")
 AuthDep = Annotated[User, Depends(AuthService.get_current_active_user)]
 
 @router.post("/register/", response_model=UserRegisterResponse)
-def register_user(user: UserCreate, session: SessionDep):
+def register_user(user: UserCreate, session: SessionDep,):
     return AuthService.register_user(user, session)
 
 @router.post("/login/", response_model=UserLoginResponse)

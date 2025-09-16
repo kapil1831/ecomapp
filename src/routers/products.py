@@ -3,7 +3,7 @@ from src.schemas.product import ProductUpdateOut, ProductsOut, ProductCreate, Pr
 from src.services.products import ProductService
 from ..dependencies.dependencies import SessionDep
 from src.services.auth import AuthService
-from src.models.models import User
+from ..models.users import User
 from fastapi import Depends
 from typing import Annotated
 
@@ -19,6 +19,14 @@ write_permission = Annotated[User, Security(AuthService.get_current_active_user,
 ReadAuthDep = Annotated[User, Security(AuthService.get_current_active_user, scopes=["read"])]
 WriteAuthDep = Annotated[User, Security(AuthService.get_current_active_user, scopes=["write:user"])]
 AdminAuthDep = Annotated[User, Security(AuthService.get_current_active_user, scopes=["read", "write", "delete"])]
+
+PERMISSIONS = {
+    "list_products": "read:product",
+    "view_product": "read:product",
+    "create_product": "create:product",
+    "update_product": "update:product",
+    "delete_product": "delete:product",
+}
 
 @router.get("/")
 def get_all_products(session: SessionDep, user:ReadAuthDep ) -> ProductsOut:

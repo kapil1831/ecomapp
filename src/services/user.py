@@ -1,8 +1,10 @@
 
 from sqlalchemy.orm import Session
-from ..schemas.user import UserBase, UserLogin, UserLoginResponse, UserCreateResponse, UserCreate, UsersOut, UserOut
-from ..models.models import User
+from ..schemas.user import UserBase, UserLogin, UserLoginResponse, UserCreateResponse, UserCreate, UsersOut, UserOut, UserUpdate
+from ..models.users import User, Role
 from sqlalchemy import select
+
+from fastapi import HTTPException
 
 class UserService:
     
@@ -41,9 +43,10 @@ class UserService:
         
         return None
         
+    
     @staticmethod
-    def update_user(id: int):
-        pass
+    def update_user(id: int, user_payload: UserUpdate, session: Session):
+        pass # lets not allow updating user info now.
     
     
     @staticmethod
@@ -57,18 +60,49 @@ class UserService:
         session.refresh(user)
         
         return UserCreateResponse(message=f"successfully created the user.", user_details=UserBase.model_validate(user))
+    
+    @staticmethod
+    def remove_user(id: int, session: Session):
+        user = session.get(user, id)
         
-    
-    @staticmethod
-    def login_user(user):
-        pass;
-    
-    
-    @staticmethod
-    def logout_user(user):
-        pass
+        if user is None:
+            raise HTTPException(status_code=404, detail="user not found for given id")
+        
+        session.delete(user)
+        session.commit()
+        return user
     
     
     @staticmethod
-    def remove_user(id: int):
-        pass
+    def assign_role_to_user(user_id: int, role_id: int, session: Session) -> User:
+        user = session.get(User, user_id)
+        if user is None:
+            raise HTTPException(status_code=400, detail="user does not exists")
+        
+        role = session.get(Role, role_id)
+        if role is None:
+            raise HTTPException(status_code=400, detail="role does not exists")
+                
+        
+        if role not in user.roles:
+            user.roles.append(role)
+            session.commit()
+            session.refresh(user)
+        return user
+    
+    @staticmethod
+    def remove_role_from_users(user_id: int, role_id: int, session: Session) -> User:
+        user = session.get(User, user_id)
+        if user is None:
+            raise HTTPException(status_code=400, detail="user does not exists")
+        
+        role = session.get(Role, role_id)
+        if role is None:
+            raise HTTPException(status_code=400, detail="role does not exists")
+        
+        if role in user.roles:
+            user.roles.remove(role)
+            session.commit()
+            session.refresh(user)
+    
+        return user

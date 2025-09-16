@@ -1,14 +1,15 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, validator
+from typing import Optional, List
 from datetime import datetime
+from ..models.users import Role, Permission
 
 class UserBase(BaseModel):
     username: str
     email: EmailStr
     admin: bool = False
+    roles: Optional[List[str]]
 
     model_config = {"from_attributes": True}  # Add this
-
 
 class UserCreate(UserBase):
     password: str
@@ -78,3 +79,43 @@ class UsersOut(BaseModel):
 
 class UserDeleteOut(BaseModel):
     message: str
+    
+class RoleBase(BaseModel):
+    name: str
+    
+class RoleCreate(RoleBase):
+    permissions: Optional[List["PermissionBase"]]
+    
+class RoleUpdate(RoleCreate):
+    pass
+
+class RoleDelete(RoleBase):
+    pass
+
+class Role(RoleBase):
+    id: int
+    permissions: List[str]
+
+    class Config:
+        from_attributes = True
+
+    @validator('permissions', pre=True, each_item=True)
+    def convert_permissions_to_strings(cls, perm):
+        if isinstance(perm, Permission):
+            return perm.name
+        return perm
+
+class PermissionBase(BaseModel):
+    name: str
+    
+class PermissionCreate(PermissionBase):
+    pass 
+
+class PermissionUpdate(PermissionBase):
+    pass
+
+class PermissionResponse(PermissionBase):
+    id: int
+
+    class Config:
+        from_attributes = True
