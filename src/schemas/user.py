@@ -7,9 +7,15 @@ class UserBase(BaseModel):
     username: str
     email: EmailStr
     admin: bool = False
-    roles: Optional[List[str]]
+    roles: Optional[List[str]] = []
 
     model_config = {"from_attributes": True}  # Add this
+
+    @validator('roles', pre=True, each_item=True)
+    def convert_roles_to_strings(cls, role):
+        if isinstance(role, Role):
+            return role.name
+        return role
 
 class UserCreate(UserBase):
     password: str
@@ -18,7 +24,6 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     username: str
     password: str
-    scopes: Optional[list[str]] = []
     
 class UserRegister(UserCreate):
     pass
@@ -84,7 +89,7 @@ class RoleBase(BaseModel):
     name: str
     
 class RoleCreate(RoleBase):
-    permissions: Optional[List["PermissionBase"]]
+    permissions: Optional[List["PermissionBase"]] = []
     
 class RoleUpdate(RoleCreate):
     pass
@@ -92,9 +97,9 @@ class RoleUpdate(RoleCreate):
 class RoleDelete(RoleBase):
     pass
 
-class Role(RoleBase):
+class RoleOut(RoleBase):
     id: int
-    permissions: List[str]
+    permissions: Optional[List[str]] = []
 
     class Config:
         from_attributes = True

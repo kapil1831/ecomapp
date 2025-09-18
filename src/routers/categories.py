@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Security
+from fastapi import APIRouter
 from src.services.category import CategoryService
 from src.services.auth import AuthService
 from fastapi import Depends
@@ -14,31 +14,36 @@ router = APIRouter(tags=["Category"], prefix="/category")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-ReadAuthDep = Annotated[User, Security(AuthService.get_current_user, scopes=["read"])]
-WriteAuthDep = Annotated[User, Security(AuthService.get_current_user, scopes=["write:user"])]
-AdminAuthDep = Annotated[User, Security(AuthService.get_current_user, scopes=["read", "write", "delete"])]
+
+PERMISSIONS = {
+    "list_categories": "read:category",
+    "view_category": "read:category",
+    "create_category": "create:category",
+    "update_category": "update:category",
+    "delete_category": "delete:category",
+}
 
 @router.get("/", response_model=CategoriesOut)
-def get_all_categories(session: SessionDep, user: ReadAuthDep):
+def get_all_categories(session: SessionDep, user: Annotated[User, Depends(AuthService.permission_required(PERMISSIONS["list_categories"]))]):
     return CategoryService.get_all_categories(session)
 
 
 @router.get("/{id}", response_model=CategoryOutWithProducts)
-def get_category(id: int, session: SessionDep, user: ReadAuthDep):
+def get_category(id: int, session: SessionDep, user: Annotated[User, Depends(AuthService.permission_required(PERMISSIONS["view_category"]))]):
     return CategoryService.get_category(id, session)
 
 
 @router.post("/", response_model=CategoryOut)
-def create_category(category: CategoryCreate, session: SessionDep, user: AdminAuthDep):
+def create_category(category: CategoryCreate, session: SessionDep, user: Annotated[User, Depends(AuthService.permission_required(PERMISSIONS["create_category"]))]):
     return CategoryService.create_category(category, session)
 
 
 @router.put("/{id}", response_model=CategoryOut)
-def update_category(id: int, category: CategoryUpdate, session: SessionDep, user: AdminAuthDep):
+def update_category(id: int, category: CategoryUpdate, session: SessionDep, user: Annotated[User, Depends(AuthService.permission_required(PERMISSIONS["update_category"]))]):
     return CategoryService.update_category(id, category, session)
 
 
 @router.delete("/{id}", response_model=CategoryDeleteOut)
-def remove_category(id: int, session: SessionDep, user: AdminAuthDep):
+def remove_category(id: int, session: SessionDep, user: Annotated[User, Depends(AuthService.permission_required(PERMISSIONS["delete_category"]))]):
     return CategoryService.remove_category(id, session)
 

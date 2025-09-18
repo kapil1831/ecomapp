@@ -53,11 +53,12 @@ class User(Base):
 
 class Role(Base):
     __tablename__ = 'roles'
+    
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(32), unique=True)
     
     users: Mapped[List[User]] = relationship(secondary=roles_users_table, back_populates='roles')
-    permissions : Mapped[List['Permission']] = relationship(secondary=roles_permissions_table, back_populates="roles")
+    permissions : Mapped[List['Permission']] = relationship(secondary=roles_permissions_table, back_populates='roles')
     
     def __repr__(self):
         return f"Role(id={self.id}, name={self.name})"

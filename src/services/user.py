@@ -63,7 +63,7 @@ class UserService:
     
     @staticmethod
     def remove_user(id: int, session: Session):
-        user = session.get(user, id)
+        user = session.get(User, id)
         
         if user is None:
             raise HTTPException(status_code=404, detail="user not found for given id")
@@ -74,7 +74,7 @@ class UserService:
     
     
     @staticmethod
-    def assign_role_to_user(user_id: int, role_id: int, session: Session) -> User:
+    def assign_role_to_user(user_id: int, role_id: int, session: Session):
         user = session.get(User, user_id)
         if user is None:
             raise HTTPException(status_code=400, detail="user does not exists")
@@ -91,7 +91,7 @@ class UserService:
         return user
     
     @staticmethod
-    def remove_role_from_users(user_id: int, role_id: int, session: Session) -> User:
+    def remove_role_from_user(user_id: int, role_id: int, session: Session):
         user = session.get(User, user_id)
         if user is None:
             raise HTTPException(status_code=400, detail="user does not exists")

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Security
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from src.schemas.user import UserCreate, UserOut, UserLogin, UserLoginResponse, UserLogoutResponse,  UserRegisterResponse
 from src.services.user import UserService
@@ -14,7 +14,7 @@ router = APIRouter(tags=["Authentication"], prefix="/auth")
 AuthDep = Annotated[User, Depends(AuthService.get_current_active_user)]
 
 @router.post("/register/", response_model=UserRegisterResponse)
-def register_user(user: UserCreate, session: SessionDep,):
+def register_user(user: UserCreate, session: SessionDep):
     return AuthService.register_user(user, session)
 
 @router.post("/login/", response_model=UserLoginResponse)
@@ -23,8 +23,7 @@ def login_user(user_credentials: UserLogin, session: SessionDep):
 
 @router.post("/token/", response_model=Token)
 def access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep):
-    scopes = form_data.scopes if form_data.scopes else []
-    user_payload = UserLogin(username=form_data.username, password=form_data.password, scopes=scopes)
+    user_payload = UserLogin(username=form_data.username, password=form_data.password)
     return AuthService.get_token(user_payload, session)
 
 @router.get("/me")

@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, insert
 from sqlalchemy import exc
 from ..models.users import Role, Permission, User
-from ..schemas.user import Role, RoleBase, RoleCreate, RoleUpdate, PermissionBase, PermissionCreate, PermissionUpdate, PermissionResponse
+from ..schemas.user import RoleBase, RoleCreate, RoleUpdate, PermissionBase, PermissionCreate, PermissionUpdate, PermissionResponse
+from sqlalchemy.orm import selectinload
 
 class RoleService:
     
@@ -26,7 +27,12 @@ class RoleService:
         role = session.execute(select(Role).where(Role.name == name)).scalars().first()
         if role is None:
             raise HTTPException(status_code=404, detail="role not found for given name")
-        return role    
+        return role  
+    
+    @staticmethod
+    def get_roles_with_permissions(session: Session):
+        roles = session.execute(select(Role).options(selectinload(Role.permissions))).scalars().all()
+        return roles  
     
     @staticmethod
     def update(id: int, role_payload: RoleUpdate, session: Session):
@@ -51,7 +57,7 @@ class RoleService:
         #[TODO]
         #handle failure  if creation fails : 1. when same role created twice
         try:
-            role = Role(RoleCreate)      
+            role = Role(**role_payload.model_dump())      
             session.add(role)
             session.commit()
             session.refresh(role)
@@ -72,7 +78,7 @@ class RoleService:
         return role
     
     @staticmethod
-    def add_permission_to_roles(role_id: int, permission_id: int, session: Session) -> Role:
+    def add_permission_to_roles(role_id: int, permission_id: int, session: Session):
         role = session.get(Role, role_id)
         if role is None:
             raise HTTPException(status_code=400, detail="role does not exists")
@@ -89,7 +95,7 @@ class RoleService:
         return role
     
     @staticmethod
-    def remove_permission_from_roles(role_id: str, permission_id: str, session: Session) -> Role:
+    def remove_permission_from_roles(role_id: str, permission_id: str, session: Session):
         role = session.get(Role, role_id)
         if role is None:
             raise HTTPException(status_code=400, detail="role does not exists")
@@ -150,7 +156,7 @@ class PermissionService:
         #[TODO]
         #handle failure  if creation fails : 1. when same permission created twice
         try:
-            permission = Permission(PermissionCreate)      
+            permission = Permission(**permission_payload.model_dump())      
             session.add(permission)
             session.commit()
             session.refresh(permission)
