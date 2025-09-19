@@ -2,6 +2,7 @@ from sqlalchemy import select, exists
 from models.users import User
 from db.database import get_session
 from services.auth import AuthService
+from services.user import UserService
 from schemas.user import UserRegister
 
 from core.conf import settings
@@ -28,6 +29,7 @@ def create_default_user():
         # use auth service to create user also give him super-admin role having all the permissions
         user_payload = UserRegister(username='admin_1', email='admin1@ecom.com', password="123456")
         default_user = AuthService.register_user(user_payload, session)
+        UserService.assign_role_to_user(default_user, 'admin', session)
         logger.info(f"Default user created: {default_user.data.username}")
     except Exception as e:
         session.rollback()

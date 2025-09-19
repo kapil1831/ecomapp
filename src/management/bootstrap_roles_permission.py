@@ -10,8 +10,8 @@ RBAC_MATRIX = {
     "user": {
         "products": ["read:product"],
         "categories": ["read:category"],
-        "orders": ["read:order", "create:order"],
-        "carts": ["read:cart", "update:cart"],
+        "orders": ["read:order", "create:order", "update:order", "delete:order"],
+        "carts": ["read:cart", "create:cart", "update:cart", "delete:cart"],
         "cart_items": ["read:cart_item", "create:cart_item", "update:cart_item", "delete:cart_item"],
         "users": ["read:user", "update:user_self"],
         "roles": ["read:role"],

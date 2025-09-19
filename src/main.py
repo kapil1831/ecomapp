@@ -4,6 +4,7 @@ from .routers import categories, products, carts, users, auth, cart_items, role,
 from .db.database import create_db_and_tables
 from .dependencies.dependencies import SessionDep
 from .management.bootstrap_roles_permission import bootstrap_rbac
+from .management.bootstrap_superuser import bootstrap_superuser
 
 app = FastAPI()
 
@@ -21,6 +22,7 @@ app.include_router(orders.router)
 def on_startup():
     create_db_and_tables()
     bootstrap_rbac()
+    bootstrap_superuser()
 
 @app.get("/health_check")
 def health_check():

@@ -35,7 +35,7 @@ def create_order(order: OrderCreate, session: SessionDep, user: Annotated[User, 
 
 
 @router.put("/{id}", response_model=OrderUpdateOut)
-def update_order(id: int, order: OrderUpdate, session: SessionDep, user: Annotated[User, Depends(AuthService.permission_required(PERMISSIONS["create_order"]))]):  #[TODO] can we updated by any autgenticated user
+def update_order(id: int, order: OrderUpdate, session: SessionDep, user: Annotated[User, Depends(AuthService.permission_required(PERMISSIONS["update_order"]))]):  #[TODO] can we updated by any autgenticated user
     return OrderService.update_order(id, order, session)
 
 

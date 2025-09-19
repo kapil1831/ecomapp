@@ -1,4 +1,5 @@
 
+import typing
 from fastapi import HTTPException
 from ..schemas.order import OrderDeleteOut, OrderUpdate, OrderCreate, OrderUpdateOut, OrdersOut, OrderOut
 from sqlalchemy.orm import Session
@@ -11,7 +12,7 @@ class OrderService:
     @staticmethod
     def get_all_orders(session: Session):
         orders = session.execute(select(Order)).scalars().all()
-        return OrdersOut(message="all existing carts", count = len(orders), data=orders)
+        return OrdersOut(message="all existing orders", count = len(orders), data=orders)
     
     
     @staticmethod
@@ -29,65 +30,71 @@ class OrderService:
         order = session.get(Order, id)
         
         if order is None:
-            return OrderUpdateOut(message="No such Order exist in your cart", data=None)
+            return OrderUpdateOut(message="No such Order exist in your order", data=None)
         
-        product = session.get(Product, order.product_id)
-        subtotal = order_payload.quantity*(product.price*(1-(product.discount_percentage/100)))
-        
-        cart = session.get(Cart, order.cart_id)
-        if cart is None:
-            return OrderUpdateOut(message="No such Cart exists", data=None)
-        
-        cart.total_amount -= order.subtotal  # deduct old subtotal
-        cart.total_amount += subtotal  # add new subtotal
-        
-        update_data = order_payload.model_dump(include={"quantity"})
-        update_data.update({"subtotal": subtotal})
+        update_data = order_payload.model_dump()
         
         for key, value in update_data.items():
-            setattr(order, key, value)
+            if key and value is not None:
+                setattr(order, key, value)
             
         session.commit()
         session.refresh(order)
-        return OrderUpdateOut(message="successfully updated the cart item", data=order)
+        return OrderUpdateOut(message="successfully updated the order", data=order)
             
         
     
     
     @staticmethod
     def create_order(order_payload: OrderCreate, session: Session):
+        print(order_payload)
         
         cart_id = order_payload.cart_id
-        product_id = order_payload.product_id
+        user_id = order_payload.user_id
         
         cart = session.get(Cart, cart_id)
+        print(cart)
         
         if cart is None:
             raise HTTPException(status_code=404, detail="cart not found for given id")
         
-        product = session.get(Product, product_id)        
+        user = session.get(User, user_id)        
+        if user is None:
+             raise HTTPException(status_code=404, detail="user not found for given id")
         
-        if product is None:
-             raise HTTPException(status_code=404, detail="product not found for given id")
-        
-        existing_order = session.execute(select(Order).filter_by(product_id=product_id, cart_id=cart_id)).scalar()
-        
-        if existing_order:
-            existing_order.quantity += order_payload.quantity
-            extra_subtotal = order_payload.quantity*(product.price*(1- (product.discount_percentage/100)))
-            existing_order.subtotal += extra_subtotal
-            cart.total_amount += extra_subtotal
-            session.commit()
-            session.refresh(existing_order)
-            return existing_order
-        
-        subtotal = order_payload.quantity*(product.price*(1- (product.discount_percentage/100)))
-        cart.total_amount += subtotal  #total amount should be a derived value rather than a stored value
-        order = Order(**order_payload.model_dump(exclude={"subtotal"}), subtotal=subtotal, product=product, cart=cart)
+        # we assume such order does not exists and we create a new order everytime
+        item_rows = []
+        for ci in cart.cart_items:
+            unit_price = float(ci.product.price)
+            discount_pct = float(getattr(ci.product, "discount_percentage", 0.0) or 0.0)
+            effective_price = unit_price * (1 - discount_pct / 100)
+            item_rows.append({
+                "cart_item_id": ci.id,
+                "product_id": ci.product_id,
+                "product_title": ci.product.title,
+                "quantity": ci.quantity,
+                "unit_price": unit_price,
+                "discount_percentage": discount_pct,
+                "price_after_discount": round(effective_price, 2),
+                "line_subtotal": float(ci.subtotal),
+            })
+
+        order_details = {
+            "item_count": len(item_rows),
+            "total_amount": float(cart.total_amount),
+            "total_discount": float(cart.total_discount),
+            "grand_total": float(cart.grand_total) if hasattr(cart, "grand_total") else float(cart.total_amount - cart.total_discount),
+        }
+        order = Order(
+            **order_payload.model_dump(exclude={"order_details", "order_items"}), 
+            order_items=item_rows,
+            order_details=order_details, 
+        )
         
         session.add(order)
         session.commit()
         session.refresh(order)
+        #[TODO] empty the cart after order is created
         
         return order
         
@@ -98,15 +105,10 @@ class OrderService:
         order = session.get(Order, id)
         
         if order is None:
-            return OrderDeleteOut(message="cart not found for given id")
+            return OrderDeleteOut(message="order not found for given id")
         
-        cart = session.get(Cart, order.cart_id)
-        if cart is None:
-            return OrderDeleteOut(message="No such Cart exists", data=None)
-        cart.total_amount -= order.subtotal
-
         session.delete(order)
         session.commit()
         
-        return OrderDeleteOut(message="successfully deleted cart item with given id", data=order)
+        return OrderDeleteOut(message="successfully deleted order with given id", data=order)
         

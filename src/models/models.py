@@ -15,8 +15,6 @@ product_category_association = Table(
     Column("product_id", Integer, ForeignKey("products.id")),
     Column("category_id", Integer, ForeignKey("categories.id"))
 )
-    
-
 
 class Product(Base):
     __tablename__ = 'products'
@@ -137,18 +135,16 @@ class Order(Base):
     address: Mapped[str] = mapped_column(String(200))  # can be a saperate table
     payment_status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus), default=PaymentStatus.PENDING)
     payment_type: Mapped[PaymentType] = mapped_column(Enum(PaymentType), default=PaymentType.COD)
-    payment_details: Mapped[dict[str, Any]] = mapped_column(JSON)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    payment_details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict) # can be a saperate table
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id"))
-    cart_items: Mapped[dict[str, Any]] = mapped_column(JSON) 
-    order_details: Mapped[dict[str, Any]] = mapped_column(JSON)
+    order_items: Mapped[list[dict]] = mapped_column(JSON, default=list) 
+    order_details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     user: Mapped["User"] = relationship()
     cart: Mapped["Cart"] = relationship()
-    
-    @property
-    def order_items(self) -> dict[str, Any]:
-        return self.cart_items
 
     @property
     def total_order_amount(self):
@@ -159,6 +155,10 @@ class Order(Base):
     def item_count(self):
         item_count = self.order_details.get("item_count", 0) if self.order_details is not None else 0
         return item_count
+    
+    @property
+    def subtotal(self):
+        return self.order_details.get("grand_total", 0) if self.order_details is not None else 0
         
     def __repr__(self):
         return f"order(id = {self.id}, user_id)"
