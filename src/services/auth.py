@@ -3,10 +3,10 @@ from sqlalchemy import select
 from .user import UserService
 from ..schemas.user import UserRegister, UserRegisterResponse, UserLogin, UserLoginResponse, UserCredentials
 from ..schemas.tokens import Token, TokenData
-from ..models.models import User
+from ..models.users import User
 from datetime import datetime, timedelta, timezone
-from fastapi.security import HTTPAuthorizationCredentials, OAuth2PasswordBearer, HTTPBearer, OAuth2PasswordRequestForm, SecurityScopes
-from fastapi import Depends, HTTPException, Security, status
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
 from typing import Annotated
 from ..dependencies.dependencies import SessionDep
 from src.core.conf import settings
@@ -20,34 +20,14 @@ from jwt.exceptions import InvalidTokenError
 
 class AuthService:
     
-    permissions = {
-            "admin": ["me","read", "write", "delete"],
-            "user": ["me","read", "write:user"]
-        }
     oauth2_scheme = OAuth2PasswordBearer(
-        tokenUrl="auth/token/",
-        scopes={
-            "me": "Read information about the current user.", 
-            "products:read": "Read products.",
-            "products:write": "Create and update products.",
-            "read": "Read resources.",
-            "write": "Write resources.",
-            "delete": "Delete resources.",
-            "write:user": "Write user resources."
-        })
+        tokenUrl="auth/token/"
+    )
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     SECRET_KEY = "mysecretkey"
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_TIME = settings.access_token_expire_minutes or 1 #minutes  
-    
-    @staticmethod
-    def get_scopes_by_role(user: User):
-        # Placeholder for permission retrieval logic based on user role
-        # This could be a database query or a static mapping
-        role = "user"
-        if user.admin == True:
-            role = "admin"
-        return AuthService.permissions.get(role, [])
+
         
     @staticmethod
     def get_password_hash(password: str) -> str:
@@ -79,7 +59,6 @@ class AuthService:
         
     @staticmethod
     def create_access_token(data: dict, expires_delta: timedelta | None = None):
-        # Placeholder for JWT token creation logic
         to_encode = data.copy()
         
         if expires_delta:
@@ -93,7 +72,6 @@ class AuthService:
     
     @staticmethod
     def create_refresh_token(data: dict, expires_delta: timedelta | None = None):
-        # Placeholder for JWT token creation logic
         return "refresh_token_string"
     
     @staticmethod
@@ -102,15 +80,13 @@ class AuthService:
         try:
             payload = jwt.decode(token, AuthService.SECRET_KEY, AuthService.ALGORITHM)
             username = payload.get("sub")
-            print(username)
             if username is None:
                 raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Invalid authentication credentials",
                         headers={"WWW-Authenticate": "Bearer"},
                     )  
-            token_scopes = payload.get("scopes", [])
-            token_data = TokenData(username=username, scopes=token_scopes)
+            token_data = TokenData(username=username)
         except InvalidTokenError as e:
             print("invalid token error", e)
             raise HTTPException(
@@ -121,11 +97,8 @@ class AuthService:
         return token_data
     
     @staticmethod
-    def get_current_user(session: SessionDep, security_scopes: SecurityScopes , token: Annotated[str, Depends(oauth2_scheme)]):
-        if security_scopes.scopes:
-            authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
-        else:
-            authenticate_value = "Bearer"
+    def get_current_user(session: SessionDep, token: Annotated[str, Depends(oauth2_scheme)]):
+        authenticate_value = f'Bearer'
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -133,24 +106,14 @@ class AuthService:
         )
         token_data = AuthService.decode_token(token)
         
-        
         user = AuthService.get_user_by_username(session, token_data.username)
         
         if user is None:
             raise credentials_exception
-        print(security_scopes.scopes)
-        print(token_data.scopes)
-        for scope in security_scopes.scopes:
-            if scope not in token_data.scopes:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Not enough permissions",
-                    headers={"WWW-Authenticate": authenticate_value},
-                )
         return user
     
     @staticmethod
-    def get_current_active_user(user : Annotated[User, Security(get_current_user, scopes=["me"])]):
+    def get_current_active_user(user : Annotated[User, Depends(get_current_user)]):
         if not user:
             raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -159,38 +122,37 @@ class AuthService:
                     )        
         return user
     
-    # @staticmethod
-    # def require_role(user: User, role: str):
-    #     if user.role != role:
-    #         raise Exception(f"User does not have the required role: {role}")
-    #     return True
+    @staticmethod
+    def role_required(role: str):
+        def role_checker(user : Annotated[User, Depends(AuthService.get_current_user)]):
+            if not user.has_role(role):
+                raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="User does not have required role",
+                    )
+            return user
+        return role_checker
     
     @staticmethod
-    def validate_scopes(accessible_scopes, payload_scopes):
-        if not set(payload_scopes).issubset(set(accessible_scopes)):
-            print("not enough permissions, accesible scopes:", accessible_scopes)
+    def permission_required(permission: str):
+        def permission_checker(user : Annotated[User, Depends(AuthService.get_current_user)]):
+            if user.has_permission(permission):
+                    return user
+                
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not enough permissions, accesible scopes: " + str(accessible_scopes),
-                headers={"WWW-Authenticate": "Bearer"},
+                detail="User does not have required permission",
             )
+        return permission_checker
      
     @staticmethod
     def authenticate(user_payload, user):
         if AuthService.verify_password(user_payload.password, user.hashed_password) is False:
             return None
         
-        #[TODO] derive the correct user scopes from the user payload
-        accessible_scopes = AuthService.get_scopes_by_role(user)
-        payload_scopes = getattr(user_payload, 'scopes', [])
-        
-        AuthService.validate_scopes(accessible_scopes, payload_scopes)
-        
-        # finally we will only have the scopes that are passed by user and accessible to the user
-        derived_scopes = getattr(user_payload, 'scopes', [])
-        print("derived_scopes:",derived_scopes)
         access_token = AuthService.create_access_token(
-                data={"sub": user.username, "scopes": derived_scopes}, expires_delta=timedelta(minutes=AuthService.ACCESS_TOKEN_EXPIRE_TIME)
+                data={"sub": user.username}, 
+                expires_delta=timedelta(minutes=AuthService.ACCESS_TOKEN_EXPIRE_TIME)
             )
         return UserCredentials(
             token=access_token,
@@ -202,8 +164,6 @@ class AuthService:
     
     @staticmethod
     def register_user(user_payload: UserRegister, session: Session):
-        # validate model fields -> done by pydantic models
-        # check if user already exists;
         maybe_user = session.scalars(
             select(User).where(User.email==user_payload.username)
         ).first()
@@ -211,7 +171,6 @@ class AuthService:
         if maybe_user:
             return UserRegisterResponse(message=f"user with username {user_payload.username} already exists.")
         
-        #[TODO] hash password before saving to db
         user_payload.password = AuthService.get_password_hash(user_payload.password)
         return UserService.create_user(user_payload, session)
             
@@ -227,9 +186,7 @@ class AuthService:
                     headers={"WWW-Authenticate": "Bearer"},
                 )  
             
-        # authentication logic:
         creds = AuthService.authenticate(user_payload, user)
-        # raise exception 401 or 403
         if creds is None:
             raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -250,10 +207,9 @@ class AuthService:
                     detail="Invalid username",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-        # authentication logic:
+        
         creds = AuthService.authenticate(user_payload, user) 
         
-        # raise exception 401 or 403
         if creds is None:
             raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,

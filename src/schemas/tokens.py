@@ -10,6 +10,5 @@ class Token(BaseModel):
     
 class TokenData(BaseModel):
     username: str | None = None
-    scopes: list[str]= []
-    
+        
     model_config = {"from_attributes": True}

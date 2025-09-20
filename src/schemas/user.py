@@ -1,14 +1,29 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, validator
+from typing import Optional, List, TypeVar, Generic
 from datetime import datetime
+from ..models.users import Role, Permission
+from pydantic.generics import GenericModel
+
+T = TypeVar('T') 
+
+class ResponseWrapper(GenericModel, Generic[T]):
+    message: str
+    count: Optional[int] = None
+    data: Optional[T] = None
 
 class UserBase(BaseModel):
     username: str
     email: EmailStr
     admin: bool = False
+    roles: Optional[List[str]] = []
 
     model_config = {"from_attributes": True}  # Add this
 
+    @validator('roles', pre=True, each_item=True)
+    def convert_roles_to_strings(cls, role):
+        if isinstance(role, Role):
+            return role.name
+        return role
 
 class UserCreate(UserBase):
     password: str
@@ -17,7 +32,6 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     username: str
     password: str
-    scopes: Optional[list[str]] = []
     
 class UserRegister(UserCreate):
     pass
@@ -61,20 +75,49 @@ class UserOut(UserBase):
     updated_at: datetime
     
     model_config = {"from_attributes": True}
+    
+class RoleBase(BaseModel):
+    name: str
+    
+    class Config:
+        from_attributes = True
+    
+class RoleCreate(RoleBase):
+    permissions: Optional[List["PermissionBase"]] = []
+    
+class RoleUpdate(RoleCreate):
+    pass
 
+class RoleOut(RoleBase):
+    id: int 
+    permissions: Optional[List["PermissionOut"]] = []
+    
+    class Config:
+        from_attributes = True
 
-class UsersOut(BaseModel):
-    message: str
-    count: int
-    data: list[UserOut]
+    
+class RolePermissionOut(RoleBase):
+    id: int
+    permissions: Optional[List[str]] = []
 
+    @validator('permissions', pre=True, each_item=True)
+    def convert_permissions_to_strings(cls, perm):
+        if isinstance(perm, Permission):
+            return perm.name
+        return perm
 
-# class UserLoginResponse(BaseModel):
-#     message: str
-#     access_token: str
-#     token_type: str = "bearer"
-#     user: UserOut
+class PermissionBase(BaseModel):
+    name: str
+    
+    class Config:
+        from_attributes = True
+    
+class PermissionCreate(PermissionBase):
+    pass 
 
+class PermissionUpdate(PermissionBase):
+    pass
 
-class UserDeleteOut(BaseModel):
-    message: str
+class PermissionOut(PermissionBase):
+    id: int
+
