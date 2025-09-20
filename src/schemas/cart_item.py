@@ -5,6 +5,7 @@ from datetime import datetime
 class CartItemBase(BaseModel):
     cart_id: int
     product_id: int
+    product_price: int
     quantity: int = 1    
     
 class CartItemCreate(CartItemBase):

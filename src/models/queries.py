@@ -1,8 +1,7 @@
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select, insert
-from ..models.models import CartItem, Cart, Product
-from ..models.users import User
+from ..models.models import CartItem, User, Cart, Product
 
 
 
