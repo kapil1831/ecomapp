@@ -1,10 +1,10 @@
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select, insert
+from sqlalchemy import select
 from sqlalchemy import exc
-from ..models.users import Role, Permission, User
-from ..schemas.user import RoleBase, RoleCreate, RoleUpdate, PermissionBase, PermissionCreate, PermissionUpdate, PermissionResponse
+from ..models.users import Role, Permission
+from ..schemas.user import RoleCreate, RoleUpdate, PermissionCreate, PermissionUpdate
 from sqlalchemy.orm import selectinload
 
 class RoleService:

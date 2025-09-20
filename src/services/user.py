@@ -1,6 +1,6 @@
 
 from sqlalchemy.orm import Session
-from ..schemas.user import UserBase, UserLogin, UserLoginResponse, UserCreateResponse, UserCreate, UsersOut, UserOut, UserUpdate
+from ..schemas.user import UserCreate, UserUpdate
 from ..models.users import User, Role
 from sqlalchemy import select
 
@@ -11,37 +11,27 @@ class UserService:
     @staticmethod
     def get_all_users(session: Session):
         users = session.execute(select(User)).scalars().all()
-        return UsersOut(
-            message="existing users",
-            count=len(users),
-            data = users
-        )
+        return users
     
     
     @staticmethod
     def get_user(session: Session, user_id: int = None, username: str = None, email: str = None):
         if user_id is None and username is None and email is None :
-            return None
+            raise HTTPException(status_code=400, detail="user_id or username or email is required to fetch user")
         
         if user_id:
             user = session.execute(select(User).where(User.id == user_id)).scalars().first()
-            if user is None:
-                return None
-            return UserOut.model_validate(user)
         
         if username:
             user = session.execute(select(User).where(User.username == username)).scalars().first()
-            if user is None:
-                return None
-            return UserOut.model_validate(user)
         
         if email:
             user = session.execute(select(User).where(User.email == email)).scalars().first()
-            if user is None:
-                return None
-            return UserOut.model_validate(user)
+            
+        if user is None:
+            raise HTTPException(status_code=404, detail="user not found for given details")
         
-        return None
+        return user
         
     
     @staticmethod
@@ -59,7 +49,7 @@ class UserService:
         session.commit()
         session.refresh(user)
         
-        return UserCreateResponse(message=f"successfully created the user.", user_details=UserBase.model_validate(user))
+        return user
     
     @staticmethod
     def remove_user(id: int, session: Session):
@@ -83,7 +73,6 @@ class UserService:
         if role is None:
             raise HTTPException(status_code=400, detail="role does not exists")
                 
-        
         if role not in user.roles:
             user.roles.append(role)
             session.commit()
