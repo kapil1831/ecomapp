@@ -3,8 +3,7 @@ from fastapi import HTTPException
 from ..schemas.cart import CartDeleteOut, CartUpdate, CartCreate, CartUpdateOut, CartsOut, CartOut, CartWithCartItemsOut
 from sqlalchemy.orm import Session
 from sqlalchemy import select, insert
-from ..models.models import Cart
-from ..models.users import User
+from ..models.models import Cart, User
 from sqlalchemy import exc
 
 class CartService:

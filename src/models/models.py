@@ -1,12 +1,14 @@
-from sqlalchemy.orm import mapped_column, Mapped, relationship, column_property
+from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship, column_property
 from sqlalchemy import Integer, String, Boolean, Numeric, ForeignKey, Table, Column, select
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy import DateTime
 from sqlalchemy import func
 
-from .base import Base
-from .users import User
+
+class Base(DeclarativeBase):
+    pass
+
 
 product_category_association = Table(
     "products_categories", Base.metadata,
@@ -108,4 +110,25 @@ class Cart(Base):
     @property
     def grand_total(self):
         return sum(cart_item.subtotal for cart_item in self.cart_items)
+    
+    
+
+    
+class User(Base):
+    __tablename__ = "users"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(unique=True)
+    email: Mapped[str] = mapped_column(unique=True)
+    hashed_password: Mapped[str]
+    admin: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    
+    def __repr__(self):
+        return f"User(id={self.id}, username='{self.username}', email='{self.email}', admin={self.admin})"
+
+    
+
     
