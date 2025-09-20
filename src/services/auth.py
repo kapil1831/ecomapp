@@ -5,7 +5,7 @@ from ..schemas.user import UserRegister, UserRegisterResponse, UserLogin, UserLo
 from ..schemas.tokens import Token, TokenData
 from ..models.users import User
 from datetime import datetime, timedelta, timezone
-from fastapi.security import HTTPAuthorizationCredentials, OAuth2PasswordBearer, HTTPBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from typing import Annotated
 from ..dependencies.dependencies import SessionDep
