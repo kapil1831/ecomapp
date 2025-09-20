@@ -1,10 +1,10 @@
 
 import typing
-from fastapi import HTTPException
-from ..schemas.order import OrderDeleteOut, OrderUpdate, OrderCreate, OrderUpdateOut, OrdersOut, OrderOut
+from fastapi import HTTPException, status
+from ..schemas.order import OrderUpdate, OrderCreate
 from sqlalchemy.orm import Session
-from sqlalchemy import select, insert
-from ..models.models import Order, Cart, CartItem
+from sqlalchemy import select
+from ..models.models import Order, Cart
 from ..models.users import User
 
 class OrderService:
@@ -12,17 +12,15 @@ class OrderService:
     @staticmethod
     def get_all_orders(session: Session):
         orders = session.execute(select(Order)).scalars().all()
-        return OrdersOut(message="all existing orders", count = len(orders), data=orders)
+        return orders
     
     
     @staticmethod
     def get_order(id: int, session: Session):
         order = session.get(Order, id)
-        
         if order is None:
-            return {"message": "order not found for given id"}
-    
-        return {"message": "order found by given id", "data": order}
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="order not found for given id")
+        return order
     
     
     @staticmethod
@@ -30,30 +28,26 @@ class OrderService:
         order = session.get(Order, id)
         
         if order is None:
-            return OrderUpdateOut(message="No such Order exist in your order", data=None)
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="order not found for given id")
         
         update_data = order_payload.model_dump()
-        
         for key, value in update_data.items():
             if key and value is not None:
                 setattr(order, key, value)
             
         session.commit()
         session.refresh(order)
-        return OrderUpdateOut(message="successfully updated the order", data=order)
+        return order
             
         
     
     
     @staticmethod
-    def create_order(order_payload: OrderCreate, session: Session):
-        print(order_payload)
-        
+    def create_order(order_payload: OrderCreate, session: Session):        
         cart_id = order_payload.cart_id
         user_id = order_payload.user_id
         
         cart = session.get(Cart, cart_id)
-        print(cart)
         
         if cart is None:
             raise HTTPException(status_code=404, detail="cart not found for given id")
@@ -95,7 +89,6 @@ class OrderService:
         session.commit()
         session.refresh(order)
         #[TODO] empty the cart after order is created
-        
         return order
         
     
@@ -105,10 +98,9 @@ class OrderService:
         order = session.get(Order, id)
         
         if order is None:
-            return OrderDeleteOut(message="order not found for given id")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="order not found for given id")
         
         session.delete(order)
         session.commit()
-        
-        return OrderDeleteOut(message="successfully deleted order with given id", data=order)
+        return order
         

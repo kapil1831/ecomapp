@@ -1,7 +1,15 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, TypeVar, Generic
 from datetime import datetime
 from ..models.models import PaymentStatus, PaymentType
+from pydantic.generics import GenericModel
+
+T = TypeVar('T') 
+
+class ResponseWrapper(GenericModel, Generic[T]):
+    message: str
+    count: Optional[int] = None
+    data: Optional[T] = None
 
 class OrderBase(BaseModel):
     cart_id: int
@@ -9,6 +17,9 @@ class OrderBase(BaseModel):
     order_details: Optional[dict] = {}
     order_items: Optional[list[dict]] = []
     address: str
+    
+    class Config:
+        from_attributes = True
     
 class OrderCreate(OrderBase):
     payment_status: Optional[str] = PaymentStatus.PENDING
@@ -22,6 +33,9 @@ class OrderUpdate(BaseModel):
     payment_status: Optional[str] = None
     payment_type: Optional[str] = None
     payment_details: Optional[dict] = None
+    
+    class Config:
+        from_attributes = True
 
 class OrderOut(OrderBase):
     id: int
@@ -32,15 +46,3 @@ class OrderOut(OrderBase):
     updated_at: datetime
     
     model_config = {"from_attributes": True}
-
-class OrdersOut(BaseModel):
-    message: str
-    count: int
-    data: List[OrderOut]
-    
-class OrderUpdateOut(BaseModel):
-    message: str
-    data: OrderOut | None = None
-
-class OrderDeleteOut(OrderUpdateOut):
-    pass
